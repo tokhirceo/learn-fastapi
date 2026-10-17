@@ -1,0 +1,8 @@
+html, body { overflow-x: hidden; }
+dialog::backdrop { background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); }
+dialog[open] { animation: pop .18s ease-out; }
+@keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+@keyframes shimmer { 50% { opacity: .5; } }
+.skeleton { animation: shimmer 1.2s ease-in-out infinite; }
+.wrap { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation: none !important; transition: none !important; } }

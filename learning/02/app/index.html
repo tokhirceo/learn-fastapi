@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskFlow — Vazifalar boshqaruvi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Manrope', 'system-ui', 'sans-serif'] } } } };</script>
+<style>
+  html, body { overflow-x: hidden; }
+  dialog::backdrop { background: rgba(15, 23, 42, .45); backdrop-filter: blur(2px); }
+  dialog[open] { animation: pop .18s ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+  @keyframes shimmer { 50% { opacity: .5; } }
+  .skeleton { animation: shimmer 1.2s ease-in-out infinite; }
+  .wrap { overflow-wrap: anywhere; }
+  @media (prefers-reduced-motion: reduce) { *, ::before, ::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+
+<div class="flex min-h-screen">
+  <!-- Yon panel -->
+  <aside class="hidden md:flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-6 sticky top-0 h-screen">
+    <div class="flex items-center gap-2 px-2 mb-8">
+      <span class="grid h-8 w-8 place-items-center rounded-lg bg-teal-700 text-white">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </span>
+      <span class="text-lg font-extrabold tracking-tight">TaskFlow</span>
+    </div>
+    <nav class="space-y-1" aria-label="Vazifalar bo‘limlari">
+      <button type="button" data-filter="all" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+        <span>Barcha vazifalar</span><span data-count="all" class="text-xs tabular-nums"></span>
+      </button>
+      <button type="button" data-filter="pending" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+        <span>Bajarilmagan</span><span data-count="pending" class="text-xs tabular-nums"></span>
+      </button>
+      <button type="button" data-filter="done" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+        <span>Bajarilgan</span><span data-count="done" class="text-xs tabular-nums"></span>
+      </button>
+    </nav>
+    <a href="/docs" target="_blank" rel="noopener" class="mt-auto rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">API hujjatlari</a>
+  </aside>
+
+  <main class="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
+    <div class="mx-auto max-w-4xl">
+      <header class="mb-6 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 md:hidden mb-1">
+            <span class="grid h-6 w-6 place-items-center rounded-md bg-teal-700 text-white"><svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+            <span class="font-extrabold">TaskFlow</span>
+          </div>
+          <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Vazifalar</h1>
+          <p class="text-sm text-slate-500">Ishlaringizni bir joyda kuzating</p>
+        </div>
+        <button id="newBtn" type="button" class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+          Yangi vazifa
+        </button>
+      </header>
+
+      <!-- Statistika -->
+      <section aria-label="Statistika" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Jami vazifalar</p><p id="stTotal" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Bajarilgan</p><p id="stDone" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Bajarilmagan</p><p id="stPending" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-medium text-slate-500">Bajarilish foizi</p><p id="stPercent" class="mt-1 text-2xl font-extrabold tabular-nums">–</p>
+          <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><div id="barFill" class="h-full rounded-full bg-teal-600 transition-all duration-500" style="width:0%"></div></div>
+        </div>
+      </section>
+
+      <!-- Qidiruv, filtr, saralash -->
+      <section aria-label="Qidiruv va filtrlar" class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
+          <label for="search" class="sr-only">Vazifalarni qidirish</label>
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M20 20l-3.5-3.5"/></svg>
+          <input id="search" type="search" autocomplete="off" placeholder="Nom yoki tavsif bo‘yicha qidirish" class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25">
+        </div>
+        <div class="flex gap-3">
+          <div class="flex flex-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:flex-none" role="group" aria-label="Holat bo‘yicha filtr">
+            <button type="button" data-filter="all" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Barchasi</button>
+            <button type="button" data-filter="pending" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Jarayonda</button>
+            <button type="button" data-filter="done" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Tayyor</button>
+          </div>
+          <div>
+            <label for="sort" class="sr-only">Saralash</label>
+            <select id="sort" class="h-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium shadow-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25">
+              <option value="id">ID bo‘yicha</option>
+              <option value="alpha">Alifbo bo‘yicha</option>
+              <option value="status">Holat bo‘yicha</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Vazifalar ro‘yxati" aria-live="polite"><ul id="list" class="space-y-2"></ul></section>
+    </div>
+  </main>
+</div>
+
+<!-- Yaratish / tahrirlash oynasi -->
+<dialog id="taskDlg" aria-labelledby="dlgTitle" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 text-slate-800 shadow-2xl">
+  <form id="taskForm" novalidate class="p-6">
+    <h2 id="dlgTitle" class="text-lg font-extrabold"></h2>
+    <div class="mt-4">
+      <label for="fTitle" class="mb-1 block text-sm font-semibold">Vazifa nomi <span class="text-red-600" aria-hidden="true">*</span></label>
+      <input id="fTitle" name="title" type="text" maxlength="200" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25" placeholder="Masalan: Hisobotni tayyorlash">
+    </div>
+    <div class="mt-4">
+      <label for="fDesc" class="mb-1 block text-sm font-semibold">Tavsif <span class="font-normal text-slate-400">(ixtiyoriy)</span></label>
+      <textarea id="fDesc" name="description" rows="4" class="w-full resize-y rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25" placeholder="Vazifa haqida qisqacha"></textarea>
+    </div>
+    <label id="fDoneRow" class="mt-4 hidden cursor-pointer items-center gap-2 text-sm font-medium"><input id="fDone" type="checkbox" class="h-4 w-4 rounded accent-teal-700"> Bajarilgan deb belgilash</label>
+    <p id="formErr" role="alert" class="mt-4 hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" id="cancelBtn" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Bekor qilish</button>
+      <button type="submit" id="saveBtn" class="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- O'chirishni tasdiqlash -->
+<dialog id="delDlg" aria-labelledby="delTitle" class="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl p-0 text-slate-800 shadow-2xl">
+  <div class="p-6">
+    <h2 id="delTitle" class="text-lg font-extrabold">Vazifani o‘chirasizmi?</h2>
+    <p id="delText" class="wrap mt-2 text-sm text-slate-600"></p>
+    <p id="delErr" role="alert" class="mt-3 hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" id="delCancel" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Bekor qilish</button>
+      <button type="button" id="delOk" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">O‘chirish</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" class="pointer-events-none fixed bottom-4 left-1/2 z-50 max-w-[calc(100%-2rem)] -translate-x-1/2 translate-y-4 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white opacity-0 shadow-lg transition duration-200"></div>
+
+<script>
+"use strict";
+const API = "/tasks/";
+const $ = (s) => document.querySelector(s);
+const state = { tasks: [], filter: "all", sort: "id", q: "", busy: new Set(), loading: true, error: null, editing: null, deleting: null };
+
+/* ---------- API yordamchisi ---------- */
+function errorMessage(status, data) {
+  if (status === 404) return "Vazifa topilmadi. U allaqachon o‘chirilgan bo‘lishi mumkin.";
+  if (status === 422) return "Kiritilgan ma’lumotlar noto‘g‘ri. Maydonlarni tekshirib, qayta urinib ko‘ring.";
+  if (status >= 500) return "Serverda xatolik yuz berdi. Birozdan so‘ng qayta urinib ko‘ring.";
+  if (data && typeof data.detail === "string") return data.detail;
+  return "Kutilmagan xatolik yuz berdi. Qayta urinib ko‘ring.";
+}
+async function api(path, options = {}) {
+  let res;
+  try {
+    res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  } catch (e) {
+    console.error("Tarmoq xatosi:", e);
+    throw new Error("Serverga ulanib bo‘lmadi. Internet va server holatini tekshiring.");
+  }
+  if (res.status === 204) return null;
+  let data = null;
+  try { data = await res.json(); } catch (_) { /* bo‘sh yoki JSON bo‘lmagan javob */ }
+  if (!res.ok) { console.error("API xatosi:", res.status, data); throw new Error(errorMessage(res.status, data)); }
+  return data;
+}
+
+/* ---------- Yordamchilar ---------- */
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+function icon(path) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  s.setAttribute("viewBox", "0 0 24 24"); s.setAttribute("fill", "none"); s.setAttribute("stroke", "currentColor");
+  s.setAttribute("stroke-width", "2"); s.setAttribute("class", "h-4 w-4"); s.setAttribute("aria-hidden", "true");
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("d", path); p.setAttribute("stroke-linecap", "round"); p.setAttribute("stroke-linejoin", "round");
+  s.appendChild(p); return s;
+}
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg;
+  t.classList.remove("opacity-0", "translate-y-4");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add("opacity-0", "translate-y-4"), 3200);
+}
+
+/* ---------- Ma'lumotlar ---------- */
+async function loadTasks() {
+  state.loading = true; state.error = null; render();
+  try {
+    const data = await api(API);
+    state.tasks = Array.isArray(data) ? data : [];
+  } catch (e) { state.error = e.message; }
+  state.loading = false; render();
+}
+
+function visibleTasks() {
+  const q = state.q.trim().toLocaleLowerCase("uz");
+  let list = state.tasks.filter((t) => {
+    if (state.filter === "done" && !t.is_completed) return false;
+    if (state.filter === "pending" && t.is_completed) return false;
+    if (!q) return true;
+    return (t.title || "").toLocaleLowerCase("uz").includes(q) || (t.description || "").toLocaleLowerCase("uz").includes(q);
+  });
+  const by = {
+    id: (a, b) => a.id - b.id,
+    alpha: (a, b) => (a.title || "").localeCompare(b.title || "", "uz", { sensitivity: "base" }),
+    status: (a, b) => Number(a.is_completed) - Number(b.is_completed) || a.id - b.id,
+  };
+  return list.sort(by[state.sort]);
+}
+
+/* ---------- Render ---------- */
+function renderStats() {
+  const total = state.tasks.length;
+  const done = state.tasks.filter((t) => t.is_completed).length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const ready = !state.loading && !state.error;
+  $("#stTotal").textContent = ready ? total : "–";
+  $("#stDone").textContent = ready ? done : "–";
+  $("#stPending").textContent = ready ? total - done : "–";
+  $("#stPercent").textContent = ready ? pct + "%" : "–";
+  $("#barFill").style.width = (ready ? pct : 0) + "%";
+  $("#bar").setAttribute("aria-valuenow", ready ? pct : 0);
+  document.querySelectorAll("[data-count]").forEach((n) => {
+    const k = n.dataset.count;
+    n.textContent = !ready ? "" : k === "all" ? total : k === "done" ? done : total - done;
+  });
+}
+function renderFilters() {
+  document.querySelectorAll("[data-filter]").forEach((b) => {
+    const on = b.dataset.filter === state.filter;
+    b.setAttribute("aria-pressed", on);
+    const isNav = b.classList.contains("nav-btn");
+    b.classList.toggle("bg-teal-50", on && isNav); b.classList.toggle("text-teal-800", on);
+    b.classList.toggle("bg-teal-700", on && !isNav); b.classList.toggle("text-white", on && !isNav);
+    b.classList.toggle("text-teal-800", on && isNav); b.classList.toggle("text-slate-600", !on);
+    b.classList.toggle("hover:bg-slate-100", !on);
+  });
+}
+function emptyBlock(title, text, actionLabel, action) {
+  const li = el("li", "rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center");
+  li.append(el("p", "font-bold", title), el("p", "mx-auto mt-1 max-w-sm text-sm text-slate-500", text));
+  if (actionLabel) {
+    const b = el("button", "mt-4 rounded-xl bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2", actionLabel);
+    b.type = "button"; b.addEventListener("click", action); li.append(b);
+  }
+  return li;
+}
+function taskItem(t) {
+  const busy = state.busy.has(t.id);
+  const li = el("li", "group flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300");
+  const cb = el("input", "mt-1 h-5 w-5 shrink-0 cursor-pointer rounded accent-teal-700 disabled:cursor-wait disabled:opacity-50");
+  cb.type = "checkbox"; cb.checked = !!t.is_completed; cb.disabled = busy;
+  cb.setAttribute("aria-label", "“" + t.title + "” vazifasini bajarilgan deb belgilash");
+  cb.addEventListener("change", () => toggleTask(t.id, cb.checked));
+
+  const body = el("div", "min-w-0 flex-1");
+  body.append(el("p", "wrap font-semibold leading-snug transition " + (t.is_completed ? "text-slate-400 line-through" : ""), t.title));
+  if (t.description && String(t.description).trim()) body.append(el("p", "wrap mt-1 line-clamp-3 whitespace-pre-line text-sm text-slate-500", t.description));
+
+  const actions = el("div", "flex shrink-0 gap-1");
+  const edit = el("button", "grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50");
+  edit.type = "button"; edit.disabled = busy; edit.title = "Tahrirlash"; edit.setAttribute("aria-label", "“" + t.title + "” vazifasini tahrirlash");
+  edit.append(icon("M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4")); edit.addEventListener("click", () => openForm(t));
+  const del = el("button", "grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50");
+  del.type = "button"; del.disabled = busy; del.title = "O‘chirish"; del.setAttribute("aria-label", "“" + t.title + "” vazifasini o‘chirish");
+  del.append(icon("M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3")); del.addEventListener("click", () => openDelete(t));
+  actions.append(edit, del);
+  li.append(cb, body, actions);
+  return li;
+}
+function render() {
+  renderStats(); renderFilters();
+  const ul = $("#list"); ul.replaceChildren();
+  if (state.loading) {
+    for (let i = 0; i < 3; i++) ul.append(el("li", "skeleton h-[74px] rounded-2xl border border-slate-200 bg-white"));
+    return;
+  }
+  if (state.error) { ul.append(emptyBlock("Ma’lumotlarni yuklab bo‘lmadi", state.error, "Qayta urinish", loadTasks)); return; }
+  if (state.tasks.length === 0) { ul.append(emptyBlock("Hozircha vazifalar yo‘q", "Birinchi vazifangizni qo‘shing va ishni boshlang.", "Vazifa qo‘shish", () => openForm())); return; }
+  const list = visibleTasks();
+  if (list.length === 0) { ul.append(emptyBlock("Hech narsa topilmadi", "Qidiruv so‘zi yoki filtrni o‘zgartirib ko‘ring.")); return; }
+  list.forEach((t) => ul.append(taskItem(t)));
+}
+
+/* ---------- Holatni almashtirish ---------- */
+async function toggleTask(id, value) {
+  if (state.busy.has(id)) return;
+  state.busy.add(id); render();
+  try {
+    const updated = await api(API + id, { method: "PATCH", body: JSON.stringify({ is_completed: value }) });
+    state.tasks = state.tasks.map((t) => (t.id === id ? updated : t));
+  } catch (e) { toast(e.message); }
+  state.busy.delete(id); render();
+}
+
+/* ---------- Yaratish / tahrirlash ---------- */
+const dlg = $("#taskDlg"), form = $("#taskForm");
+function setSaving(on) {
+  const b = $("#saveBtn"); b.disabled = on;
+  b.replaceChildren();
+  if (on) {
+    const sp = el("span", "h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white");
+    b.append(sp, document.createTextNode("Saqlanmoqda…"));
+  } else b.textContent = state.editing ? "O‘zgarishlarni saqlash" : "Vazifa yaratish";
+}
+function showFormErr(msg) { const p = $("#formErr"); p.textContent = msg || ""; p.classList.toggle("hidden", !msg); }
+function openForm(task) {
+  state.editing = task || null;
+  $("#dlgTitle").textContent = task ? "Vazifani tahrirlash" : "Yangi vazifa";
+  $("#fTitle").value = task ? task.title : "";
+  $("#fDesc").value = task && task.description ? task.description : "";
+  $("#fDone").checked = task ? !!task.is_completed : false;
+  $("#fDoneRow").classList.toggle("hidden", !task); $("#fDoneRow").classList.toggle("flex", !!task);
+  showFormErr(""); setSaving(false);
+  dlg.showModal(); $("#fTitle").focus();
+}
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = $("#fTitle").value.trim(), description = $("#fDesc").value.trim();
+  if (!title) { showFormErr("Vazifa nomini kiriting."); $("#fTitle").focus(); return; }
+  if (title.length > 200) { showFormErr("Vazifa nomi 200 belgidan oshmasligi kerak."); return; }
+  showFormErr("");
+  const t = state.editing;
+  try {
+    if (t) {
+      const patch = {};
+      if (title !== t.title) patch.title = title;
+      if (description !== (t.description || "")) patch.description = description;
+      if ($("#fDone").checked !== !!t.is_completed) patch.is_completed = $("#fDone").checked;
+      if (Object.keys(patch).length === 0) { dlg.close(); return; }
+      setSaving(true);
+      const updated = await api(API + t.id, { method: "PATCH", body: JSON.stringify(patch) });
+      state.tasks = state.tasks.map((x) => (x.id === t.id ? updated : x));
+      toast("Vazifa yangilandi");
+    } else {
+      setSaving(true);
+      const body = { title }; if (description) body.description = description;
+      const created = await api(API, { method: "POST", body: JSON.stringify(body) });
+      state.tasks.push(created);
+      toast("Vazifa yaratildi");
+    }
+    dlg.close(); form.reset(); render();
+  } catch (err) { showFormErr(err.message); setSaving(false); }
+});
+$("#newBtn").addEventListener("click", () => openForm());
+$("#cancelBtn").addEventListener("click", () => dlg.close());
+
+/* ---------- O'chirish ---------- */
+const delDlg = $("#delDlg");
+function openDelete(t) {
+  state.deleting = t;
+  $("#delText").textContent = "“" + t.title + "” butunlay o‘chiriladi. Bu amalni qaytarib bo‘lmaydi.";
+  $("#delErr").classList.add("hidden"); $("#delOk").disabled = false; $("#delOk").textContent = "O‘chirish";
+  delDlg.showModal(); $("#delCancel").focus();
+}
+$("#delCancel").addEventListener("click", () => delDlg.close());
+$("#delOk").addEventListener("click", async () => {
+  const t = state.deleting; if (!t) return;
+  const btn = $("#delOk"); btn.disabled = true; btn.textContent = "O‘chirilmoqda…";
+  try {
+    await api(API + t.id, { method: "DELETE" });
+    state.tasks = state.tasks.filter((x) => x.id !== t.id);
+    delDlg.close(); render(); toast("Vazifa o‘chirildi");
+  } catch (e) {
+    const p = $("#delErr"); p.textContent = e.message; p.classList.remove("hidden");
+    btn.disabled = false; btn.textContent = "O‘chirish";
+  }
+});
+
+/* ---------- Qidiruv, filtr, saralash ---------- */
+$("#search").addEventListener("input", (e) => { state.q = e.target.value; render(); });
+$("#sort").addEventListener("change", (e) => { state.sort = e.target.value; render(); });
+document.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => { state.filter = b.dataset.filter; render(); }));
+[dlg, delDlg].forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
+
+loadTasks();
+</script>
+</body>
+</html>

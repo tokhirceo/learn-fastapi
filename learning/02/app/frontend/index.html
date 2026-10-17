@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TaskFlow — Vazifalar boshqaruvi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Manrope', 'system-ui', 'sans-serif'] } } } };</script>
+<link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+
+<div class="flex min-h-screen">
+  <aside class="hidden md:flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-6 sticky top-0 h-screen">
+    <div class="flex items-center gap-2 px-2 mb-8">
+      <span class="grid h-8 w-8 place-items-center rounded-lg bg-teal-700 text-white">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+      </span>
+      <span class="text-lg font-extrabold tracking-tight">TaskFlow</span>
+    </div>
+    <nav class="space-y-1" aria-label="Vazifalar bo‘limlari">
+      <button type="button" data-filter="all" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"><span>Barcha vazifalar</span><span data-count="all" class="text-xs tabular-nums"></span></button>
+      <button type="button" data-filter="pending" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"><span>Bajarilmagan</span><span data-count="pending" class="text-xs tabular-nums"></span></button>
+      <button type="button" data-filter="done" class="nav-btn flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"><span>Bajarilgan</span><span data-count="done" class="text-xs tabular-nums"></span></button>
+    </nav>
+    <a href="/docs" target="_blank" rel="noopener" class="mt-auto rounded-lg px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">API hujjatlari</a>
+  </aside>
+
+  <main class="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">
+    <div class="mx-auto max-w-4xl">
+      <header class="mb-6 flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <div class="mb-1 flex items-center gap-2 md:hidden">
+            <span class="grid h-6 w-6 place-items-center rounded-md bg-teal-700 text-white"><svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+            <span class="font-extrabold">TaskFlow</span>
+          </div>
+          <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Vazifalar</h1>
+          <p class="text-sm text-slate-500">Ishlaringizni bir joyda kuzating</p>
+        </div>
+        <button id="newBtn" type="button" class="inline-flex shrink-0 items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>
+          Yangi vazifa
+        </button>
+      </header>
+
+      <section aria-label="Statistika" class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Jami vazifalar</p><p id="stTotal" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Bajarilgan</p><p id="stDone" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><p class="text-xs font-medium text-slate-500">Bajarilmagan</p><p id="stPending" class="mt-1 text-2xl font-extrabold tabular-nums">–</p></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-xs font-medium text-slate-500">Bajarilish foizi</p><p id="stPercent" class="mt-1 text-2xl font-extrabold tabular-nums">–</p>
+          <div id="bar" class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Bajarilish foizi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="barFill" class="h-full rounded-full bg-teal-600 transition-all duration-500" style="width:0%"></div></div>
+        </div>
+      </section>
+
+      <section aria-label="Qidiruv va filtrlar" class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
+          <label for="search" class="sr-only">Vazifalarni qidirish</label>
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path stroke-linecap="round" d="M20 20l-3.5-3.5"/></svg>
+          <input id="search" type="search" autocomplete="off" placeholder="Nom yoki tavsif bo‘yicha qidirish" class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition placeholder:text-slate-400 focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25">
+        </div>
+        <div class="flex gap-3">
+          <div class="flex flex-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:flex-none" role="group" aria-label="Holat bo‘yicha filtr">
+            <button type="button" data-filter="all" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Barchasi</button>
+            <button type="button" data-filter="pending" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Jarayonda</button>
+            <button type="button" data-filter="done" class="seg-btn flex-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Tayyor</button>
+          </div>
+          <div>
+            <label for="sort" class="sr-only">Saralash</label>
+            <select id="sort" class="h-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium shadow-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25">
+              <option value="id">ID bo‘yicha</option>
+              <option value="alpha">Alifbo bo‘yicha</option>
+              <option value="status">Holat bo‘yicha</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section aria-label="Vazifalar ro‘yxati" aria-live="polite"><ul id="list" class="space-y-2"></ul></section>
+    </div>
+  </main>
+</div>
+
+<!-- Vazifa tafsilotlari -->
+<dialog id="detailDlg" aria-labelledby="dTitle" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 text-slate-800 shadow-2xl">
+  <div class="p-6">
+    <div class="flex items-start justify-between gap-3">
+      <h2 id="dTitle" class="wrap text-lg font-extrabold leading-snug"></h2>
+      <button type="button" id="dClose" aria-label="Yopish" class="-mr-2 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">
+        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <span id="dStatus"></span>
+    <p id="dDesc"></p>
+    <p class="mt-4 text-xs text-slate-400">ID: <span id="dId" class="tabular-nums"></span></p>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+      <button type="button" id="dToggle" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:cursor-wait disabled:opacity-60"></button>
+      <div class="flex gap-2">
+        <button type="button" id="dEdit" class="rounded-xl bg-teal-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2">Tahrirlash</button>
+        <button type="button" id="dDelete" class="rounded-xl px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500">O‘chirish</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- Yaratish / tahrirlash -->
+<dialog id="taskDlg" aria-labelledby="dlgTitle" class="m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl p-0 text-slate-800 shadow-2xl">
+  <form id="taskForm" novalidate class="p-6">
+    <h2 id="dlgTitle" class="text-lg font-extrabold"></h2>
+    <div class="mt-4">
+      <label for="fTitle" class="mb-1 block text-sm font-semibold">Vazifa nomi <span class="text-red-600" aria-hidden="true">*</span></label>
+      <input id="fTitle" name="title" type="text" maxlength="200" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25" placeholder="Masalan: Hisobotni tayyorlash">
+    </div>
+    <div class="mt-4">
+      <label for="fDesc" class="mb-1 block text-sm font-semibold">Tavsif <span class="font-normal text-slate-400">(ixtiyoriy)</span></label>
+      <textarea id="fDesc" name="description" rows="4" class="w-full resize-y rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-600/25" placeholder="Vazifa haqida qisqacha"></textarea>
+    </div>
+    <label id="fDoneRow" class="mt-4 hidden cursor-pointer items-center gap-2 text-sm font-medium"><input id="fDone" type="checkbox" class="h-4 w-4 rounded accent-teal-700"> Bajarilgan deb belgilash</label>
+    <p id="formErr" role="alert" class="mt-4 hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" id="cancelBtn" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Bekor qilish</button>
+      <button type="submit" id="saveBtn" class="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- O'chirishni tasdiqlash -->
+<dialog id="delDlg" aria-labelledby="delTitle" class="m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl p-0 text-slate-800 shadow-2xl">
+  <div class="p-6">
+    <h2 id="delTitle" class="text-lg font-extrabold">Vazifani o‘chirasizmi?</h2>
+    <p id="delText" class="wrap mt-2 text-sm text-slate-600"></p>
+    <p id="delErr" role="alert" class="mt-3 hidden rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+    <div class="mt-6 flex justify-end gap-2">
+      <button type="button" id="delCancel" class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600">Bekor qilish</button>
+      <button type="button" id="delOk" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">O‘chirish</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" class="pointer-events-none fixed bottom-4 left-1/2 z-50 max-w-[calc(100%-2rem)] -translate-x-1/2 translate-y-4 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white opacity-0 shadow-lg transition duration-200"></div>
+
+<script type="module" src="/static/js/main.js"></script>
+</body>
+</html>
