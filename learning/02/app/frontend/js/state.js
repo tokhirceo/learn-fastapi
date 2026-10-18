@@ -1,4 +1,12 @@
-export const state = { tasks: [], filter: "all", sort: "id", q: "", busy: new Set(), loading: true, error: null };
+export const state = { 
+  tasks: [], 
+  filter: "all", 
+  sort: "id", 
+  q: "", 
+  busy: new Set(), 
+  loading: true, 
+  error: null
+};
 
 const subs = [];
 export const subscribe = (fn) => subs.push(fn);
